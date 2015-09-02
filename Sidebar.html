@@ -1,0 +1,52 @@
+<!-- Use a templated HTML printing scriptlet to import common stylesheet. -->
+<?!= HtmlService.createHtmlOutputFromFile('Stylesheet').getContent(); ?>
+
+<!-- Below is the HTML code that defines the sidebar element structure. -->
+<div class="sidebar branding-below">
+  <p>
+  Please enter the details of your cluster below.
+  </p>
+  <div class="form-group sidebar-value-block">
+    Host: <input type="text" id="sidebar-host" value="" placeholder="example.found.io">
+  </div>
+  <div class="form-group sidebar-value-block">
+    Port: <input type="text" id="sidebar-port" value="9243" placeholder="9243">
+  </div>
+  <div class="form-group sidebar-value-block">
+    Use SSL: <input type="checkbox" id="sidebar-ssl" value="ssl" checked>
+  </div>
+  <div class="form-group sidebar-value-block">
+    Username: <input type="text" id="sidebar-user" value="" placeholder="">
+  </div>
+  <div class="form-group sidebar-value-block">
+    Password: <input type="password" id="sidebar-pass" value="">
+  </div>
+  <div class="sidebar-value-block sidebar-button-bar">
+    <button id="sidebar-check-button">Test connection</button>
+  </div>
+  <div class="hidden" id='index-details'>
+    <div class="form-group sidebar-value-block">
+      Index: <input type="text" id="sidebar-index" value="">
+    </div>
+    <div class="form-group sidebar-value-block">
+      Index Type: <input type="text" id="sidebar-type" value="spreadsheet">
+    </div>
+    <div class="form-group sidebar-value-block">
+      Template Name: <input type="text" id="sidebar-template" value="google_spreadsheet">
+    </div>
+    <div class="sidebar-value-block sidebar-button-bar">
+      <button id="sidebar-push-button">Push to cluster</button>
+    </div>
+  </div>
+  <div id="sidebar-status"></div>
+</div>
+
+<!-- Enter sidebar bottom-branding below. -->
+<div class="sidebar bottom">
+  <img alt="Elastic logo" class="logo" width="40"
+      src="https://avatars0.githubusercontent.com/u/6764390?v=3&s=80">
+  <a href="https://www.elastic.co/"><span class="gray branding-text">by Elastic</span></a>
+</div>
+
+<!-- Use a templated HTML printing scriptlet to import JavaScript. -->
+<?!= HtmlService.createHtmlOutputFromFile('SidebarJavaScript').getContent(); ?>
