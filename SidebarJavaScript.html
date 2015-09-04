@@ -1,21 +1,72 @@
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script>
-  /**
-   * Run initializations on sidebar load.
-   */
+  var header_timeout_id = 0;
+  var data_timeout_id = 0;
+  var docid_timeout_id = 0;
+
   $(function() {
     // Assign handler functions to sidebar elements here, if needed.
     $('#sidebar-check-button').click(onCheckClick);
     $('#sidebar-push-button').click(onPushClick);
     $('#sidebar-push-button').disabled = true;
     google.script.run
-        .withSuccessHandler(
-          function(msg, element) {
-            $('#sidebar-index').val(msg);
-          })
-        .withUserObject(this)
+        .withSuccessHandler(function(msg) { showStatus(''); $('#sidebar-index').val(msg); })
         .getSheetName();
+    google.script.run
+        .withSuccessHandler(function(msg) {
+          showStatus('');
+          $('#sidebar-header-range').val(msg[0]);
+          $('#sidebar-data-range').val(msg[1]);
+        })
+        .getDefaultRanges();
+
+    $('#sidebar-data-range').focus(onDataChange);
+    $('#sidebar-data-range').keyup(onDataChange);
+    $('#sidebar-header-range').focus(onHeaderChange);
+    $('#sidebar-header-range').keyup(onHeaderChange);
+
+    $('#sidebar-docid-range').focus(onDocIdChange);
+    $('#sidebar-docid-range').keyup(onDocIdChange);
   });
+
+  function updateSpreadsheetHighlight(element_id) {
+    var new_value = $('#'+element_id).val();
+    if(new_value) {
+      if(new_value.length == 1) {
+        new_value += ":"+new_value;
+      }
+      google.script.run
+        .withSuccessHandler(function(msg) {
+          showStatus('');
+          validateData();
+        })
+        .withFailureHandler(function(msg) {
+          showStatus(msg, 'error');
+        })
+        .highlightData(new_value);
+    }
+  }
+
+  function onDataChange() {
+    clearTimeout(data_timeout_id);
+    data_timeout_id = setTimeout(function() {
+      updateSpreadsheetHighlight('sidebar-data-range');
+    }, 500);
+  }
+
+  function onHeaderChange() {
+    clearTimeout(header_timeout_id);
+    header_timeout_id = setTimeout(function() {
+      updateSpreadsheetHighlight('sidebar-header-range');
+    }, 500);
+  }
+
+  function onDocIdChange() {
+    clearTimeout(docid_timeout_id);
+    docid_timeout_id = setTimeout(function() {
+      updateSpreadsheetHighlight('sidebar-docid-range');
+    }, 500);
+  }
 
   /**
    * Calls the server to retrieve information from the sheet.
@@ -24,36 +75,31 @@
    */
   function onCheckClick() {
     this.disabled = true;
-
     var host = {
       host : $('#sidebar-host').val().trim(),
       port : $('#sidebar-port').val(),
       username : $('#sidebar-user').val(),
       password : $('#sidebar-pass').val(),
-      use_ssl : ($('#sidebar-ssl').val() == 'ssl')
+      use_ssl : $('#sidebar-ssl').is(':checked')
     };
 
-    // Send the value to the server and handle the response.
     google.script.run
-        .withSuccessHandler(
-          function(msg, element) {
-            // Respond to success conditions here.
-            $('#sidebar-value').val(msg);
-            showStatus('Success!');
-            element.disabled = false;
-            $('#sidebar-push-button').disabled = false;
-            $('#index-details').removeClass();
-          })
-        .withFailureHandler(
-          function(msg, element) {
-            // Respond to failure conditions here.
-            showStatus(msg, 'error');
-            element.disabled = false;
-            $('#sidebar-push-button').disabled = true;
-            $('#index-details').removeClass().addClass('hidden');
-          })
-        .withUserObject(this)
-        .checkClusterConnection(host);
+      .withSuccessHandler(
+        function(msg, element) {
+          $('#sidebar-value').val(msg);
+          showStatus('Success!');
+          element.disabled = false;
+          $('#sidebar-push-button').disabled = false;
+          $('#index-details').removeClass();
+          validateData();
+        })
+      .withFailureHandler(
+        function(msg, element) {
+          showStatus(msg, 'error');
+          element.disabled = false;
+        })
+      .withUserObject(this)
+      .checkClusterConnection(host);
   }
 
   /**
@@ -69,28 +115,43 @@
       port : $('#sidebar-port').val(),
       username : $('#sidebar-user').val(),
       password : $('#sidebar-pass').val(),
-      use_ssl : ($('#sidebar-ssl').val() == 'ssl')
+      use_ssl : $('#sidebar-ssl').is(':checked')
     };
 
     var index = $('#sidebar-index').val();
     var index_type = $('#sidebar-type').val();
     var template_name = $('#sidebar-template').val();
 
-    // Send the value to the server and handle the response.
+    var header_range = $('#sidebar-header-range').val();
+    var data_range = $('#sidebar-data-range').val();
+    var doc_id_range = $('#sidebar-docid-range').val();
+
     google.script.run
-        .withSuccessHandler(
-          function(msg, element) {
-            showStatus('Successfully pushed data to cluster.');
-            element.disabled = false;
-          })
-        .withFailureHandler(
-          function(msg, element) {
-            // Respond to failure conditions here.
-            showStatus(msg, 'error');
-            element.disabled = false;
-          })
+      .withSuccessHandler(
+        function(msg, element) {
+          showStatus('Successfully pushed data to cluster.');
+          element.disabled = false;
+        })
+      .withFailureHandler(
+        function(msg, element) {
+          showStatus(msg, 'error');
+          element.disabled = false;
+        })
         .withUserObject(this)
-        .pushDataToCluster(host,index,index_type,template_name);
+        .pushDataToCluster(host,index,index_type,template_name,header_range,data_range,doc_id_range);
+  }
+
+  function validateData() {
+    var new_value = $('#sidebar-data-range').val();
+    google.script.run
+      .withSuccessHandler(
+        function(msg) {
+          showStatus('');
+        })
+      .withFailureHandler(function(msg) {
+        showStatus(msg, 'error');
+      })
+      .validateData(new_value);
   }
 
   /**
