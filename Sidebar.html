@@ -4,59 +4,125 @@
 <!-- Below is the HTML code that defines the sidebar element structure. -->
 <div class="sidebar branding-below">
   <p>
-  Please enter the details of your cluster below. <a href="https://github.com/elastic/google-sheets-add-on/wiki/Configuration-Help">Help?</a>
+  Please enter the details of your cluster below. <a href="https://github.com/elastic/google-sheets-add-on/wiki/Configuration-Help">Need Help?</a>
   </p>
-  <div class="form-group sidebar-value-block">
-    Host: <input type="text" id="sidebar-host" value="" placeholder="example.found.io"> *
-  </div>
-  <div class="form-group sidebar-value-block">
-    Port: <input type="text" id="sidebar-port" value="" placeholder="9243"> *
-  </div>
-  <div class="form-group sidebar-value-block">
-    Use SSL: <input type="checkbox" id="sidebar-ssl" value="ssl" checked>
-  </div>
-  <div class="form-group sidebar-value-block">
-    Username: <input type="text" id="sidebar-user" value="" placeholder="">
-  </div>
-  <div class="form-group sidebar-value-block">
-    Password: <input type="password" id="sidebar-pass" value="">
-  </div>
-  <div class="sidebar-value-block sidebar-button-bar">
-    <button id="sidebar-check-button">Test connection</button>
-  </div>
-  <div class="form-group sidebar-value-block">
-    Field Names: <input type="text" id="sidebar-header-range" value=""> *
-  </div>
-  <div class="form-group sidebar-value-block">
-    Data: <input type="text" id="sidebar-data-range" value=""> *
-  </div>
-  <div class="form-group sidebar-value-block">
-    Doc Index Column: <input type="text" id="sidebar-docid-range" value="">
-  </div>
+  <table class="table sidebar-value-block" width="100%">
+    <tr>
+      <td>
+       Host:
+      </td>
+      <td>
+        <input type="text" id="sidebar-host" value="" placeholder="example.found.io"> *
+      </td>
+    </tr>
+    <tr>
+      <td>
+       Port:
+      </td>
+      <td>
+        <input type="text" id="sidebar-port" value="" style="width:5em;" placeholder="9243"> *
+      </td>
+    </tr>
+    <tr>
+      <td>
+       Use SSL:
+      </td>
+      <td>
+        <input type="checkbox" id="sidebar-ssl" value="ssl" checked>
+      </td>
+    </tr>
+    <tr>
+      <td>
+       Username:
+      </td>
+      <td>
+        <input type="text" id="sidebar-user" value="" placeholder="">
+      </td>
+    </tr>
+    <tr>
+      <td>
+       Password:
+      </td>
+      <td>
+        <input type="password" id="sidebar-pass" value="">
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2">
+       <button id="sidebar-check-button" class="action">Test connection</button>
+      </td>
+    </tr>
+  </table>
+
+  <table class="table sidebar-value-block" width="100%">
+    <tr>
+      <td>
+       Field Names:
+      </td>
+      <td>
+        <input type="text" id="sidebar-header-range" value=""> *
+      </td>
+    </tr>
+    <tr>
+      <td>
+       Data:
+      </td>
+      <td>
+        <input type="text" id="sidebar-data-range" value=""> *
+      </td>
+    </tr>
+    <tr>
+      <td>
+       Doc Index<br>Column:
+      </td>
+      <td>
+        <input type="text" id="sidebar-docid-range" style="width:5em;" value="">
+      </td>
+    </tr>
+  </table>
+
   <div class="hidden" id='index-details'>
-    <div class="form-group sidebar-value-block">
-      Index: <input type="text" id="sidebar-index" value=""> *
-    </div>
-    <div class="form-group sidebar-value-block">
-      Index Type: <input type="text" id="sidebar-type" value="spreadsheet"> *
-    </div>
-    <div class="form-group sidebar-value-block">
-      Template Name: <input type="text" id="sidebar-template" value="google_spreadsheet">
-    </div>
-    <div class="sidebar-value-block sidebar-button-bar">
-      <button id="sidebar-push-button">Push to cluster</button>
-    </div>
+    <table class="table sidebar-value-block" width="100%">
+    <tr>
+      <td>
+       Index:
+      </td>
+      <td>
+        <input type="text" id="sidebar-index" value=""> *
+      </td>
+    </tr>
+    <tr>
+      <td>
+       Index Type:
+      </td>
+      <td>
+        <input type="text" id="sidebar-type" value="spreadsheet"> *
+      </td>
+    </tr>
+    <tr>
+      <td>
+       Template Name:
+      </td>
+      <td>
+        <input type="text" id="sidebar-template" value="google_spreadsheet">
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2">
+       <button id="sidebar-push-button" class="action">Push to cluster</button>
+      </td>
+    </tr>
+    </table>
   </div>
   <p>* Denotes a required field.</p>
   <div id="sidebar-status"></div>
-
 </div>
 
 <!-- Enter sidebar bottom-branding below. -->
 <div class="sidebar bottom">
-  <img alt="Elastic logo" class="logo" width="40"
-      src="https://avatars0.githubusercontent.com/u/6764390?v=3&s=80">
-  <a href="https://www.elastic.co/"><span class="gray branding-text">by Elastic</span></a>
+  <div id="static" class="show-inline"><img alt="Elastic logo" class="logo" width="50" src="https://avatars0.githubusercontent.com/u/6764390?v=3&s=80"></div>
+  <div id="loader" class="hidden"><img alt="Elastic logo" class="loader" src="https://www.elastic.co/static/img/load.gif"></div>
+  <div style="display:inline;"><a href="https://www.elastic.co/"><span class="gray branding-text">by Elastic</span></a></div>
 </div>
 
 <!-- Use a templated HTML printing scriptlet to import JavaScript. -->

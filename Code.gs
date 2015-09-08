@@ -49,9 +49,17 @@ function checkClusterConnection(host) {
              host.host,':',host.port,'/'].join('');
   var options = getDefaultOptions(host.username,host.password);
   options['muteHttpExceptions'] = true;
-  var resp = UrlFetchApp.fetch(url, options);
-  if(resp.getResponseCode() != 200) {
-    throw 'Server returned: '+resp.getContentText();
+  try {
+    var resp = UrlFetchApp.fetch(url, options);
+    if(resp.getResponseCode() != 200) {
+      var jsonData = JSON.parse(resp.getContentText());
+      if(jsonData.message == 'forbidden') {
+        throw "The username and/or password is incorrect."
+      }
+      throw jsonData.message;
+    }
+  } catch(e) {
+    throw 'There was a problem connecting to your cluster. Please check the host or port and try again.'
   }
 }
 
@@ -74,11 +82,15 @@ function getSheetName() {
  */
 function highlightData(a1_range) {
   var sheet = SpreadsheetApp.getActiveSheet();
-  var range = sheet.getRange(a1_range);
-  if(a1_range.length == 3) {
-    sheet.setActiveSelection(sheet.getRange(range.getRow(),range.getColumn(),range.getHeight()));
-  } else {
-    sheet.setActiveSelection(range);
+  try {
+    var range = sheet.getRange(a1_range);
+    if(a1_range.length == 3) {
+      sheet.setActiveSelection(sheet.getRange(range.getRow(),range.getColumn(),range.getHeight()));
+    } else {
+      sheet.setActiveSelection(range);
+    }
+  } catch(e) {
+    throw "The range entered was invalid. Please verify the range entered.";
   }
 }
 
@@ -87,10 +99,14 @@ function highlightData(a1_range) {
  * and all other rows.
  */
 function getDefaultRanges() {
-  var sheet = SpreadsheetApp.getActiveSheet();
-  var header_range = sheet.getRange(1, 1, 1, sheet.getLastColumn());
-  var data_range = sheet.getRange(2, 1, sheet.getLastRow()-1, sheet.getLastColumn());
-  return [header_range.getA1Notation(),data_range.getA1Notation()];
+  try {
+    var sheet = SpreadsheetApp.getActiveSheet();
+    var header_range = sheet.getRange(1, 1, 1, sheet.getLastColumn());
+    var data_range = sheet.getRange(2, 1, sheet.getLastRow()-1, sheet.getLastColumn());
+    return [header_range.getA1Notation(),data_range.getA1Notation()];
+  } catch(e) {
+    throw "There is no data in the sheet.";
+  }
 }
 
 /**
@@ -100,7 +116,12 @@ function getDefaultRanges() {
  */
 function validateData(new_value) {
   var sheet = SpreadsheetApp.getActiveSheet();
-  var range = sheet.getRange(new_value);
+  var range = null;
+  try {
+    range = sheet.getRange(new_value);
+  } catch(e) {
+    throw 'There is no data in the sheet.';
+  }
   clearNotes();
   var start_row = parseInt(range.getRow());
   var start_col = parseInt(range.getColumn());
@@ -158,21 +179,37 @@ function pushDataToCluster(host,index,index_type,template,header_range_a1,data_r
   if(!header_range_a1) { throw "Header range cannot be empty. " }
   if(!data_range_a1) { throw "Data range cannot be empty." }
 
-  var data_range = SpreadsheetApp.getActiveSheet().getRange(data_range_a1);
+
+  var data_range = null;
+  try {
+    data_range = SpreadsheetApp.getActiveSheet().getRange(data_range_a1);
+  } catch(e) {
+    throw "The data range entered was invalid. Please verify the range entered.";
+  }
   var data = data_range.getValues();
   if(data.length <= 0) {
     throw "No data to push."
   }
   var doc_id_data = null;
   if(doc_id_range_a1) {
-    var doc_id_range = SpreadsheetApp.getActiveSheet().getRange([doc_id_range_a1,':',doc_id_range_a1].join(''));
+    var doc_id_range = null;
+    try {
+      doc_id_range = SpreadsheetApp.getActiveSheet().getRange([doc_id_range_a1,':',doc_id_range_a1].join(''));
+    } catch(e) {
+      throw "The doc id columne entered was invalid. Please verify the id column entered."
+    }
     doc_id_range = doc_id_range.offset(data_range.getRow()-1, 0,data_range.getHeight());
     doc_id_data = doc_id_range.getValues();
     if(doc_id_data.length != data.length) {
 
     }
   }
-  var headers = SpreadsheetApp.getActiveSheet().getRange(header_range_a1).getValues()[0];
+  var headers = null;
+  try {
+    headers = SpreadsheetApp.getActiveSheet().getRange(header_range_a1).getValues()[0];
+  } catch(e) {
+    throw "The header range entered was invalid. Please verify the range entered.";
+  }
   if(headers.length != data[0].length) {
     throw "Header and data ranges must have the same number of columns.";
   }
@@ -188,30 +225,41 @@ function pushDataToCluster(host,index,index_type,template,header_range_a1,data_r
   }
   var bulkList = [];
   if(template) { createTemplate(host,index,template); }
+  var did_send_some_data = false;
   for(var r=0;r<data.length;r++) {
     var row = data[r];
     var toInsert = {};
     for(var c=0;c<row.length;c++) {
-      toInsert[headers[c]] = row[c];
-    }
-    if(doc_id_data) {
-      if(!doc_id_data[r][0]) {
-        throw "Missing document id for data row: "+r;
+      if(row[c]) {
+        toInsert[headers[c]] = row[c];
       }
-      bulkList.push(JSON.stringify({ "index" : { "_index" : index, "_type" : index_type, "_id" : doc_id_data[r][0] } }));
-    } else {
-      bulkList.push(JSON.stringify({ "index" : { "_index" : index, "_type" : index_type } }));
     }
-    bulkList.push(JSON.stringify(toInsert));
-    // Don't hit the UrlFetchApp limits of 10MB for POST calls.
-    if(bulkList.length >= 2000) {
-      postDataToES(host,bulkList.join("\n")+"\n");
-      bulkList = [];
+    if(Object.keys(toInsert).length > 0) {
+      if(doc_id_data) {
+        if(!doc_id_data[r][0]) {
+          throw "Missing document id for data row: "+r;
+        }
+        bulkList.push(JSON.stringify({ "index" : { "_index" : index, "_type" : index_type, "_id" : doc_id_data[r][0] } }));
+      } else {
+        bulkList.push(JSON.stringify({ "index" : { "_index" : index, "_type" : index_type } }));
+      }
+      bulkList.push(JSON.stringify(toInsert));
+      did_send_some_data = true;
+      // Don't hit the UrlFetchApp limits of 10MB for POST calls.
+      if(bulkList.length >= 2000) {
+        postDataToES(host,bulkList.join("\n")+"\n");
+        bulkList = [];
+      }
     }
   }
   if(bulkList.length > 0) {
     postDataToES(host,bulkList.join("\n")+"\n");
+    did_send_some_data = true;
   }
+  if(!did_send_some_data) {
+    throw "No data was sent to the cluster. Make sure your ranges are valid.";
+  }
+  return [(host.use_ssl) ? 'https://' : 'http://', host.host,':',host.port,'/',index,'/',index_type,'/_search'].join('');
 }
 
 /**
@@ -229,14 +277,29 @@ function createTemplate(host,index,template_name) {
             '/_template/',template_name].join('')
   var options = getDefaultOptions(host.username,host.password);
   options['muteHttpExceptions'] = true;
-  var resp = UrlFetchApp.fetch(url, options);
+  var resp = null
+  try {
+    var resp = UrlFetchApp.fetch(url, options);
+  } catch(e) {
+    throw "There was an issue creating the template. Please check the names of the template or index and try again."
+  }
   if(resp.getResponseCode() == 404) {
     options = getDefaultOptions(host.username,host.password);
     options.method = 'POST';
     default_template.template = index;
     options['payload'] = JSON.stringify(default_template);
     options.headers["Content-Type"] = "application/json";
-    resp = UrlFetchApp.fetch(url, options);
+    options['muteHttpExceptions'] = true;
+    resp = null;
+    try {
+      resp = UrlFetchApp.fetch(url, options);
+    } catch(e) {
+      throw "There was an issue creating the template. Please check the names of the template or index and try again."
+    }
+    if(resp.getResponseCode() != 200) {
+      var jsonData = JSON.parse(resp.getContentText());
+      throw jsonData.message;
+    }
   }
 }
 
@@ -253,9 +316,22 @@ function postDataToES(host,data) {
   options.method = 'POST';
   options['payload'] = data;
   options.headers["Content-Type"] = "application/json";
-  var resp = UrlFetchApp.fetch(url, options);
+  options['muteHttpExceptions'] = true;
+  var resp = null;
+  try {
+    resp = UrlFetchApp.fetch(url, options);
+  } catch(e) {
+    throw "There was an error sending data to the cluster. Please check your connection details and data."
+  }
   if(resp.getResponseCode() != 200) {
-    throw 'Error sending data to cluster: '+resp.getContentText();
+    var jsonData = JSON.parse(resp.getContentText());
+    if(jsonData.error) {
+      if(jsonData.error.indexOf('AuthenticationException')>=0) {
+        throw "The username and/or password is incorrect."
+      }
+      throw jsonData.error;
+    }
+    throw "Your cluster returned an error. Please check your connection details and data."
   }
 }
 
@@ -289,7 +365,7 @@ function isValidHost(host) {
     throw 'Please enter your cluster host and port.';
   }
   if(host.host == 'localhost' || host.host == '0.0.0.0') {
-    throw 'Your cluster must be publicly accessible to use this tool.';
+    throw 'Your cluster must be externally accessible to use this tool.';
   }
 }
 

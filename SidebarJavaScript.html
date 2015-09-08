@@ -18,6 +18,9 @@
           $('#sidebar-header-range').val(msg[0]);
           $('#sidebar-data-range').val(msg[1]);
         })
+        .withFailureHandler(function(msg) {
+          showStatus(msg, 'error');
+        })
         .getDefaultRanges();
 
     $('#sidebar-data-range').focus(onDataChange);
@@ -75,6 +78,8 @@
    */
   function onCheckClick() {
     this.disabled = true;
+    toggleLoader();
+
     var host = {
       host : $('#sidebar-host').val().trim(),
       port : $('#sidebar-port').val(),
@@ -89,14 +94,17 @@
           $('#sidebar-value').val(msg);
           showStatus('Success!');
           element.disabled = false;
+          $(element).removeClass();
           $('#sidebar-push-button').disabled = false;
           $('#index-details').removeClass();
           validateData();
+          toggleLoader();
         })
       .withFailureHandler(
         function(msg, element) {
           showStatus(msg, 'error');
           element.disabled = false;
+          toggleLoader();
         })
       .withUserObject(this)
       .checkClusterConnection(host);
@@ -109,6 +117,7 @@
    */
   function onPushClick() {
     this.disabled = true;
+    toggleLoader();
 
     var host = {
       host : $('#sidebar-host').val().trim(),
@@ -129,13 +138,15 @@
     google.script.run
       .withSuccessHandler(
         function(msg, element) {
-          showStatus('Successfully pushed data to cluster.');
+          showStatus('Success! The data is accessible <a href="'+msg+'" target="_blank">here.</a>');
           element.disabled = false;
+          toggleLoader();
         })
       .withFailureHandler(
         function(msg, element) {
           showStatus(msg, 'error');
           element.disabled = false;
+          toggleLoader();
         })
         .withUserObject(this)
         .pushDataToCluster(host,index,index_type,template_name,header_range,data_range,doc_id_range);
@@ -165,6 +176,16 @@
     $('#sidebar-status').removeClass().html(msg);
     if (classId) {
       $('#sidebar-status').addClass(classId);
+    }
+  }
+
+  function toggleLoader() {
+    if($('#static').hasClass('show-inline')) {
+      $('#static').removeClass().addClass('hidden');
+      $('#loader').removeClass().addClass('show-inline');
+    } else {
+      $('#loader').removeClass().addClass('hidden');
+      $('#static').removeClass().addClass('show-inline');
     }
   }
 
