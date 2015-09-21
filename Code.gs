@@ -2,8 +2,6 @@
  * @OnlyCurrentDoc  Limits the script to only accessing the current spreadsheet.
  */
 
-var SIDEBAR_TITLE = 'Spreadsheet To Elasticsearch';
-
 /**
  * Adds a custom menu with items to show the sidebar and dialog.
  *
@@ -12,7 +10,7 @@ var SIDEBAR_TITLE = 'Spreadsheet To Elasticsearch';
 function onOpen(e) {
   SpreadsheetApp.getUi()
     .createAddonMenu()
-    .addItem('Configure', 'showSidebar')
+    .addItem('Send To Cluster...', 'showPushDataSidebar')
     .addToUi();
 }
 
@@ -30,10 +28,10 @@ function onInstall(e) {
  * Opens a sidebar. The sidebar structure is described in the Sidebar.html
  * project file.
  */
-function showSidebar() {
-  var ui = HtmlService.createTemplateFromFile('Sidebar')
-      .evaluate()
-      .setTitle(SIDEBAR_TITLE);
+function showPushDataSidebar() {
+  var ui = HtmlService.createTemplateFromFile('ConnectionDetailsSidebar')
+    .evaluate()
+    .setTitle('Send Data To Cluster');
   SpreadsheetApp.getUi().showSidebar(ui);
 }
 
@@ -59,8 +57,32 @@ function checkClusterConnection(host) {
       throw jsonData.message;
     }
   } catch(e) {
-    throw 'There was a problem connecting to your cluster. Please check the host or port and try again.'
+    throw 'There was a problem connecting to your cluster. Please the connection details and try again.'
   }
+}
+
+function clearData() {
+  var userProperties = PropertiesService.getUserProperties();
+  userProperties.deleteAllProperties();
+}
+
+function saveHostData(host) {
+  isValidHost(host);
+  var userProperties = PropertiesService.getUserProperties();
+  userProperties.setProperties(host);
+}
+
+function getHostData() {
+  var userProperties = PropertiesService.getUserProperties();
+  var data = userProperties.getProperties();
+  return {
+    host: data['host'],
+    port: data['port'],
+    use_ssl: data['use_ssl'],
+    username: data['username'],
+    password: data['password'],
+    was_checked: data['was_checked']
+  };
 }
 
 /**
@@ -98,15 +120,33 @@ function highlightData(a1_range) {
  * Gets the default locations for headers and data, namely the first row
  * and all other rows.
  */
-function getDefaultRanges() {
+function getDefaultRange() {
   try {
     var sheet = SpreadsheetApp.getActiveSheet();
-    var header_range = sheet.getRange(1, 1, 1, sheet.getLastColumn());
-    var data_range = sheet.getRange(2, 1, sheet.getLastRow()-1, sheet.getLastColumn());
-    return [header_range.getA1Notation(),data_range.getA1Notation()];
+    var data_range = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn());
+    return data_range.getA1Notation();
   } catch(e) {
     throw "There is no data in the sheet.";
   }
+}
+
+function getSelectedRange() {
+  try {
+    var sheet = SpreadsheetApp.getActiveSheet();
+    return sheet.getActiveRange().getA1Notation();
+  } catch(e) {
+    throw "No range selected.";
+  }
+}
+
+function getDocIdOptions() {
+  var data_width = SpreadsheetApp.getActiveSheet().getDataRange().getWidth();
+  var options = [];
+  for(var i = 1; i <= data_width; i++) {
+    options.push({ value: String.fromCharCode(64+i)+":"+String.fromCharCode(64+i),
+                   text: String.fromCharCode(64+i)});
+  }
+  return options;
 }
 
 /**
@@ -123,9 +163,10 @@ function validateData(new_value) {
     throw 'There is no data in the sheet.';
   }
   clearNotes();
-  var start_row = parseInt(range.getRow());
+  var start_row = parseInt(range.getRow())+1;
   var start_col = parseInt(range.getColumn());
   var formats = range.getNumberFormats();
+  formats.shift();
   var header_formats = formats.shift();
   for(var r in formats) {
     for(var c in formats[r]) {
@@ -165,7 +206,8 @@ function clearNotes() {
  * @param {String} header_range The A1 notion of the header row.
  * @param {String} data_range The A1 notion of the data rows.
  */
-function pushDataToCluster(host,index,index_type,template,header_range_a1,data_range_a1,doc_id_range_a1) {
+function pushDataToCluster(index,index_type,template,data_range_a1,doc_id_range_a1) {
+  var host = getHostData();
   isValidHost(host);
 
   if(!index) { throw "Index name cannot be empty." }
@@ -176,53 +218,44 @@ function pushDataToCluster(host,index,index_type,template,header_range_a1,data_r
 
   if(template && template.indexOf(' ')>=0) { throw "Template name should not have spaces." }
 
-  if(!header_range_a1) { throw "Header range cannot be empty. " }
-  if(!data_range_a1) { throw "Data range cannot be empty." }
+  if(!data_range_a1) { throw "Document data range cannot be empty." }
 
 
   var data_range = null;
   try {
     data_range = SpreadsheetApp.getActiveSheet().getRange(data_range_a1);
   } catch(e) {
-    throw "The data range entered was invalid. Please verify the range entered.";
+    throw "The document data range entered was invalid. Please verify the range entered.";
   }
   var data = data_range.getValues();
   if(data.length <= 0) {
     throw "No data to push."
   }
-  var doc_id_data = null;
-  if(doc_id_range_a1) {
-    var doc_id_range = null;
-    try {
-      doc_id_range = SpreadsheetApp.getActiveSheet().getRange([doc_id_range_a1,':',doc_id_range_a1].join(''));
-    } catch(e) {
-      throw "The doc id columne entered was invalid. Please verify the id column entered."
-    }
-    doc_id_range = doc_id_range.offset(data_range.getRow()-1, 0,data_range.getHeight());
-    doc_id_data = doc_id_range.getValues();
-    if(doc_id_data.length != data.length) {
 
-    }
-  }
-  var headers = null;
-  try {
-    headers = SpreadsheetApp.getActiveSheet().getRange(header_range_a1).getValues()[0];
-  } catch(e) {
-    throw "The header range entered was invalid. Please verify the range entered.";
-  }
-  if(headers.length != data[0].length) {
-    throw "Header and data ranges must have the same number of columns.";
-  }
+  var headers = data.shift();
   for(var i in headers) {
     if(!headers[i]) {
-      throw 'Header cell cannot be empty.';
+      throw 'Document key name cannot be empty. Please make sure each cell in the document key names range has a value.';
     }
     headers[i] = headers[i].replace(/[^0-9a-zA-Z]/g,'_'); // clean up the column names for index keys
     headers[i] = headers[i].toLowerCase();
     if(!headers[i]) {
-      throw 'Header cell cannot be empty.';
+      throw 'Document key name cannot be empty. Please make sure each cell in the document key names range has a value.';
     }
   }
+
+  var doc_id_data = null;
+  if(doc_id_range_a1) {
+    var doc_id_range = null;
+    try {
+      doc_id_range = SpreadsheetApp.getActiveSheet().getRange(doc_id_range_a1);
+    } catch(e) {
+      throw "The document id column entered was invalid. Please verify the id column entered."
+    }
+    doc_id_range = doc_id_range.offset(data_range.getRow(), 0,data_range.getHeight()-1);
+    doc_id_data = doc_id_range.getValues();
+  }
+
   var bulkList = [];
   if(template) { createTemplate(host,index,template); }
   var did_send_some_data = false;
@@ -237,13 +270,14 @@ function pushDataToCluster(host,index,index_type,template,header_range_a1,data_r
     if(Object.keys(toInsert).length > 0) {
       if(doc_id_data) {
         if(!doc_id_data[r][0]) {
-          throw "Missing document id for data row: "+r;
+          throw "Missing document id for data row: "+(r+1);
         }
-        bulkList.push(JSON.stringify({ "index" : { "_index" : index, "_type" : index_type, "_id" : doc_id_data[r][0] } }));
+        bulkList.push(JSON.stringify({ "update" : { "_index" : index, "_type" : index_type, "_id" : doc_id_data[r][0], "_retry_on_conflict" : 3 } }));
+        bulkList.push(JSON.stringify({ doc: toInsert, detect_noop: true, doc_as_upsert: true }));
       } else {
         bulkList.push(JSON.stringify({ "index" : { "_index" : index, "_type" : index_type } }));
+        bulkList.push(JSON.stringify(toInsert));
       }
-      bulkList.push(JSON.stringify(toInsert));
       did_send_some_data = true;
       // Don't hit the UrlFetchApp limits of 10MB for POST calls.
       if(bulkList.length >= 2000) {
@@ -257,7 +291,7 @@ function pushDataToCluster(host,index,index_type,template,header_range_a1,data_r
     did_send_some_data = true;
   }
   if(!did_send_some_data) {
-    throw "No data was sent to the cluster. Make sure your ranges are valid.";
+    throw "No data was sent to the cluster. Make sure your document key name and value ranges are valid.";
   }
   return [(host.use_ssl) ? 'https://' : 'http://', host.host,':',host.port,'/',index,'/',index_type,'/_search'].join('');
 }
@@ -331,7 +365,7 @@ function postDataToES(host,data) {
       }
       throw jsonData.error;
     }
-    throw "Your cluster returned an error. Please check your connection details and data."
+    throw "Your cluster returned an unknown error. Please check your connection details and data."
   }
 }
 
@@ -359,7 +393,7 @@ function getDefaultOptions(username,password) {
  */
 function isValidHost(host) {
   if(!host) {
-    throw 'Host cannot be empty.';
+    throw 'Cluster details cannot be empty.';
   }
   if(!host.host || !host.port) {
     throw 'Please enter your cluster host and port.';

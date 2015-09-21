@@ -1,0 +1,248 @@
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script>
+  var header_timeout_id = 0;
+  var data_timeout_id = 0;
+  var docid_timeout_id = 0;
+  var TIMER_TIMEOUT = 500;
+
+  $(function() {
+    disableButtons();
+    enableLoader();
+    $('#sidebar-push-button').click(onPushClick);
+    $('#sidebar-conn-details-button').click(onConnDetailsClick);
+
+    $('#sidebar-docid-range').focus(updateDocIdColumns);
+    updateDocIdColumns();
+
+    google.script.run
+      .withSuccessHandler(
+        function(msg) {
+          getSheetName();
+          getDefaultRange();
+          $('#sidebar-type').val('spreadsheet');
+          $('#sidebar-template').val('google_spreadsheet');
+          if(msg.was_checked === "0") {
+            checkHost(msg);
+          } else {
+            enableButtons();
+            disableLoader();
+          }
+        }
+      )
+      .withFailureHandler(
+        function(msg) {
+          showStatus(msg, 'error');
+          disableLoader();
+        })
+      .getHostData();
+
+    $('#sidebar-data-range').focus(onDataChange);
+    $('#sidebar-data-range').keyup(onDataChange);
+    $('#sidebar-docid-range').focus(onDocIdChange);
+    $('#sidebar-docid-range').keyup(onDocIdChange);
+
+    $('#sidebar-index').focus(function() { clearIntervals(); });
+    $('#sidebar-type').focus(function() { clearIntervals(); });
+    $('#sidebar-template').focus(function() { clearIntervals(); });
+  });
+
+  function updateSpreadsheetHighlight(element_id) {
+    var new_value = $('#'+element_id).val();
+    if(new_value) {
+      if(new_value.length == 1) {
+        new_value += ":"+new_value;
+      }
+      google.script.run
+        .withSuccessHandler(function(msg) {
+          showStatus('');
+          validateData();
+        })
+        .withFailureHandler(function(msg) {
+          showStatus(msg, 'error');
+        })
+        .highlightData(new_value);
+    }
+  }
+
+  function updateDocIdColumns() {
+    google.script.run
+      .withSuccessHandler(function(msg) {
+        if(msg) {
+          if($('#sidebar-docid-range option:gt(0)').length != msg.length) {
+            $('#sidebar-docid-range option:gt(0)').remove();
+            var docid_input = $('#sidebar-docid-range');
+            for(var i in msg) {
+              docid_input.append($("<option></option>").attr("value", msg[i].value).text(msg[i].text));
+            }
+          }
+        }
+      })
+      .withFailureHandler(function(msg) {
+        showStatus(msg, 'error');
+      })
+      .getDocIdOptions();
+  }
+
+  function updateRange(element_id) {
+    var elem = $('#'+element_id);
+
+    google.script.run
+      .withSuccessHandler(function(msg) {
+        if(elem.val() != msg) {
+          elem.val(msg);
+        }
+      })
+      .withFailureHandler(function(msg) {
+        showStatus(msg, 'error');
+      })
+      .getSelectedRange();
+  }
+
+  function onDataChange() {
+    clearTimeout(data_timeout_id);
+    data_timeout_id = setTimeout(function() {
+      updateSpreadsheetHighlight('sidebar-data-range');
+    }, TIMER_TIMEOUT);
+
+  }
+
+  function onDocIdChange() {
+    clearTimeout(docid_timeout_id);
+    docid_timeout_id = setTimeout(function() {
+      updateSpreadsheetHighlight('sidebar-docid-range');
+    }, TIMER_TIMEOUT);
+  }
+
+  /**
+   * Calls the server to modify the sheet.
+   * Replace the currently selected cell value with the value in the
+   * sidebar text field.
+   */
+  function onPushClick() {
+    disableButtons();
+    enableLoader();
+
+    var index = $('#sidebar-index').val();
+    var index_type = $('#sidebar-type').val();
+    var template_name = $('#sidebar-template').val();
+
+    var data_range = $('#sidebar-data-range').val();
+    var doc_id_range = $('#sidebar-docid-range').val();
+
+    google.script.run
+      .withSuccessHandler(
+        function(msg) {
+          showStatus('Success! The data is accessible <a href="'+msg+'" target="_blank">here.</a>');
+          enableButtons();
+          disableLoader();
+        })
+      .withFailureHandler(
+        function(msg) {
+          showStatus(msg, 'error');
+          enableButtons();
+          disableLoader();
+        })
+        .pushDataToCluster(index,index_type,template_name,data_range,doc_id_range);
+  }
+
+  function validateData() {
+    var new_value = $('#sidebar-data-range').val();
+    google.script.run
+      .withSuccessHandler(
+        function(msg) {
+          showStatus('');
+        })
+      .withFailureHandler(function(msg) {
+        showStatus(msg, 'error');
+      })
+      .validateData(new_value);
+  }
+
+  function checkHost(host) {
+    google.script.run
+      .withSuccessHandler(
+        function(msg) {
+          enableButtons();
+          disableLoader();
+        }
+      )
+      .withFailureHandler(
+        function(msg) {
+          showStatus('Could not connect to your cluster. Please test the connection details.', 'error');
+          disableButtons();
+          disableLoader();
+        }
+      )
+      .checkClusterConnection(host);
+  }
+
+  function getSheetName() {
+    google.script.run
+      .withSuccessHandler(function(msg) {
+        showStatus('');
+        $('#sidebar-index').val(msg);
+      })
+      .getSheetName();
+  }
+
+  /**
+   * Displays the given status message in the sidebar.
+   *
+   * @param {String} msg The status message to display.
+   * @param {String} classId The message type (class id) that the message
+   *   should be displayed as.
+   */
+  function showStatus(msg, classId) {
+    $('#sidebar-status').removeClass().html(msg);
+    if (classId) {
+      $('#sidebar-status').addClass(classId);
+    }
+  }
+
+  function disableButtons() {
+    $("#sidebar-push-button").prop('disabled', true);
+  }
+
+  function enableButtons() {
+    $("#sidebar-push-button").prop('disabled', false);
+  }
+
+  function enableLoader() {
+    $('#static').removeClass().addClass('hidden');
+    $('#loader').removeClass().addClass('show-inline');
+  }
+
+  function disableLoader() {
+    $('#loader').removeClass().addClass('hidden');
+    $('#static').removeClass().addClass('show-inline');
+  }
+
+  function failure(msg) {
+    showStatus(msg, 'error');
+    enableButtons();
+    disableLoader();
+  }
+
+  function getDefaultRange() {
+    google.script.run
+      .withSuccessHandler(function(msg) {
+        showStatus('');
+        if(!$('#sidebar-data-range').val()) {
+          $('#sidebar-data-range').val(msg);
+        }
+        enableButtons();
+        disableLoader();
+      })
+      .withFailureHandler(function(msg) {
+        showStatus(msg, 'error');
+        disableLoader();
+      })
+      .getDefaultRange();
+  }
+
+  function onConnDetailsClick() {
+    $('#connection-details-sidebar').removeClass('hidden');
+    $('#push-data-sidebar').addClass('hidden');
+  }
+
+</script>

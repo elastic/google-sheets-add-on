@@ -1,0 +1,147 @@
+<?!= HtmlService.createHtmlOutputFromFile('Stylesheet').getContent(); ?>
+
+<div class="sidebar branding-below">
+  <div id="connection-details-sidebar" class="hidden">
+    <p>
+    If you need a cluster, sign up for a free trial from <a href="https://www.elastic.co/found?camp=gsheets-addon&src=gsheets&cnt=header">Found</a>.
+    </p>
+    <table id="connection-details-table" class="table sidebar-value-block" width="100%">
+      <tr>
+        <td colspan='3'><strong>Connection Details:</strong></td>
+      </tr>
+      <tr>
+        <td>
+         <span style="cursor:help" title='The address your cluster is at, not including the schema (http(s)://) or port (:9200). In Found, this is the value listed under Endpoints.'>Host: </span>
+        </td>
+        <td colspan='2'>
+          <input type="text" id="sidebar-host" value="" placeholder="example.found.io"> *
+        </td>
+      </tr>
+      <tr>
+        <td>
+         <span style="cursor:help" title='Usually 9200 for http or 9243 for https. In Found, the number at the end of your endpoint, after the colon.'>Port: </span>
+        </td>
+        <td colspan='2'>
+          <input type="text" id="sidebar-port" value="" style="width:5em;" placeholder="9200"> *
+        </td>
+      </tr>
+      <tr>
+        <td>
+         <span style="cursor:help" title='Check this if you connect to your cluster using https. Uncheck if using http.'>Use SSL: </span>
+        </td>
+        <td colspan='2'>
+          <input type="checkbox" id="sidebar-ssl" value="ssl">
+        </td>
+      </tr>
+      <tr>
+        <td>
+         <span style="cursor:help" title="If your cluster requires basic authentication to access, enter those credentials here.">Username: </span>
+        </td>
+        <td colspan='2'>
+          <input type="text" id="sidebar-user" value="" placeholder="">
+        </td>
+      </tr>
+      <tr>
+        <td>
+         <span style="cursor:help" title="If your cluster requires basic authentication to access, enter those credentials here.">Password: </span>
+        </td>
+        <td colspan='2'>
+          <input type="password" id="sidebar-pass" value="">
+          <input type='hidden' id='was-checked' value='0'>
+        </td>
+      </tr>
+      <tr>
+        <td>&nbsp;</td><td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td width="33%">
+          <button id="sidebar-save-button" class="action">Save</button>
+        </td>
+        <td width="33%" style="text-align:center;">
+          <button id="sidebar-clear-button">Clear</button>
+        </td>
+        <td width="33%" style="text-align:right;">
+          <button id="sidebar-check-button">Test</button>
+        </td>
+      </tr>
+    </table>
+  </div>
+  <div id="push-data-sidebar" class="hidden">
+    <table class="table sidebar-value-block" width="100%">
+      <tr>
+        <td colspan='2'><strong>Document Settings:</strong></td>
+      </tr>
+      <tr>
+        <td>
+         <span style="cursor:help" title="Select the range for your data. The first row will be used as the document keys and empty rows will be skipped.">Data Range: * </span>
+        </td>
+        <td valign="middle">
+          <input type="text" id="sidebar-data-range" style="width:5em;" value=""> <button class="narrow-button" title="Use selected range" onclick="updateRange('sidebar-data-range');">↘</button>
+        </td>
+      </tr>
+      <tr>
+        <td>
+         <span style="cursor:help" title="Select the column containing the unique id for each document.">Id Column: </span>
+        </td>
+        <td>
+          <select id="sidebar-docid-range" style="width:7em;">
+            <option value="">-- Select --</option>
+          </select>
+        </td>
+      </tr>
+    </table>
+    <table class="table sidebar-value-block" width="100%">
+      <tr>
+        <td colspan='2'><strong>Index Settings:</strong></td>
+      </tr>
+      <tr>
+        <td>
+         Index: *
+        </td>
+        <td>
+          <input type="text" id="sidebar-index" value="">
+        </td>
+      </tr>
+      <tr>
+        <td>
+         Index Type: *
+        </td>
+        <td>
+          <input type="text" id="sidebar-type" value="">
+        </td>
+      </tr>
+      <tr>
+        <td>
+         Template Name:
+        </td>
+        <td>
+          <input type="text" id="sidebar-template" value="">
+        </td>
+      </tr>
+      <tr>
+        <td>&nbsp;</td><td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td>
+         <button id="sidebar-push-button" class="action">Push to Cluster</button>
+        </td>
+        <td style="text-align:right;">
+         <button id="sidebar-conn-details-button">Edit Connection Details</button>
+        </td>
+      </tr>
+    </table>
+  </div>
+  <p>* Denotes a required field.</p>
+  <div id="sidebar-status"></div>
+</div>
+
+<!-- Enter sidebar bottom-branding below. -->
+<div class="sidebar bottom">
+  <div id="static" class="show-inline"><img alt="Elastic logo" class="logo" width="50" src="https://avatars0.githubusercontent.com/u/6764390?v=3&s=80"></div>
+  <div id="loader" class="hidden"><img alt="Elastic logo" class="loader" src="https://www.elastic.co/static/img/load.gif"></div>
+  <div style="display:inline;"><a href="https://www.elastic.co/?camp=gsheets-addon&src=gsheets&cnt=footer"><span class="gray branding-text">by Elastic</span></a></div>
+</div>
+
+<!-- Use a templated HTML printing scriptlet to import JavaScript. -->
+<?!= HtmlService.createHtmlOutputFromFile('ConnectionDetailsJavaScript').getContent(); ?>
+<?!= HtmlService.createHtmlOutputFromFile('PushDataJavaScript').getContent(); ?>
