@@ -78,7 +78,7 @@ function getHostData() {
   return {
     host: data['host'],
     port: data['port'],
-    use_ssl: data['use_ssl'],
+    use_ssl: (typeof data['use_ssl'] == 'string') ? (data['use_ssl'] == 'true') : data['use_ssl'],
     username: data['username'],
     password: data['password'],
     was_checked: data['was_checked']
@@ -306,9 +306,11 @@ function pushDataToCluster(index,index_type,template,data_range_a1,doc_id_range_
  * @param {String} template_name The name of the index template to use - required.
  */
 function createTemplate(host,index,template_name) {
+  Logger.log(typeof host.use_ssl);
   var url = [(host.use_ssl) ? 'https://' : 'http://',
              host.host,':',host.port,
             '/_template/',template_name].join('')
+  Logger.log(url);
   var options = getDefaultOptions(host.username,host.password);
   options['muteHttpExceptions'] = true;
   var resp = null
@@ -333,6 +335,15 @@ function createTemplate(host,index,template_name) {
     if(resp.getResponseCode() != 200) {
       var jsonData = JSON.parse(resp.getContentText());
       throw jsonData.message;
+    }
+  } else if(resp.getResponseCode() == 200) {
+    var jsonResp = JSON.parse(resp.getContentText());
+    if(jsonResp[template_name].template) {
+      var re = new RegExp(jsonResp[template_name].template);
+      if(!re.test(index)) {
+        throw "The template specified will only be applied to indices matching the following naming pattern: '"+jsonResp[template_name].template+
+              "' Please update the template or choose a new name.";
+      }
     }
   }
 }

@@ -72,8 +72,11 @@
         <td colspan='2'><strong>Document Settings:</strong></td>
       </tr>
       <tr>
+        <td colspan='2'><small>The first row of the selection <strong>must</strong> contain the field names for the <a href="https://www.elastic.co/guide/en/elasticsearch/guide/current/document.html">document</a>.</small></td>
+      </tr>
+      <tr>
         <td>
-         <span style="cursor:help" title="Select the range for your data. The first row will be used as the document keys and empty rows will be skipped.">Data Range: * </span>
+         <span style="cursor:help" title="Select the range for your data. The first row must contain the field names for the document. Empty rows will be skipped.">Data Range: * </span>
         </td>
         <td valign="middle">
           <input type="text" id="sidebar-data-range" style="width:5em;" value=""> <button class="narrow-button" title="Use selected range" onclick="updateRange('sidebar-data-range');">↘</button>
