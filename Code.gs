@@ -319,8 +319,8 @@ function pushDataToCluster(index,index_type,template,data_range_a1,doc_id_range_
 function createTemplate(host,index,template_name) {
   Logger.log(typeof host.use_ssl);
   var url = [(host.use_ssl) ? 'https://' : 'http://',
-             removeQueryString(host.host),':',host.port,extractQueryString(host.host)
-            '/_template/',template_name].join('')
+             removeQueryString(host.host),':',
+            '/_template/',template_name,host.port,extractQueryString(host.host)].join('')
   Logger.log(url);
   var options = getDefaultOptions(host.username,host.password);
   options['muteHttpExceptions'] = true;
