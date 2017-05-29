@@ -36,6 +36,17 @@ function showPushDataSidebar() {
 }
 
 /**
+ * Get query string from hostname input
+ */
+function extractQueryString(host) {
+  return /\?.+$/.exec(host) || '';
+}
+
+function removeQueryString(host) {
+  return host.replace(/\?.+$/, '');
+}
+
+/**
  * Checks to see if the cluster is accessible by calling /_status
  * Throws an error if the cluster does not return a 200
  *
@@ -44,7 +55,7 @@ function showPushDataSidebar() {
 function checkClusterConnection(host) {
   isValidHost(host);
   var url = [(host.use_ssl) ? 'https://' : 'http://',
-             host.host,':',host.port,'/'].join('');
+             removeQueryString(host.host),':',host.port,'/', extractQueryString(host.host)].join('');
   var options = getDefaultOptions(host.username,host.password);
   options['muteHttpExceptions'] = true;
   try {
@@ -293,7 +304,7 @@ function pushDataToCluster(index,index_type,template,data_range_a1,doc_id_range_
   if(!did_send_some_data) {
     throw "No data was sent to the cluster. Make sure your document key name and value ranges are valid.";
   }
-  return [(host.use_ssl) ? 'https://' : 'http://', host.host,':',host.port,'/',index,'/',index_type,'/_search'].join('');
+  return [(host.use_ssl) ? 'https://' : 'http://',removeQueryString(host.host),':',host.port,'/',index,'/',index_type,'/_search',extractQueryString(host.host)].join('');
 }
 
 /**
@@ -308,7 +319,7 @@ function pushDataToCluster(index,index_type,template,data_range_a1,doc_id_range_
 function createTemplate(host,index,template_name) {
   Logger.log(typeof host.use_ssl);
   var url = [(host.use_ssl) ? 'https://' : 'http://',
-             host.host,':',host.port,
+             removeQueryString(host.host),':',host.port,extractQueryString(host.host)
             '/_template/',template_name].join('')
   Logger.log(url);
   var options = getDefaultOptions(host.username,host.password);
@@ -356,7 +367,7 @@ function createTemplate(host,index,template_name) {
  */
 function postDataToES(host,data) {
   var url = [(host.use_ssl) ? 'https://' : 'http://',
-             host.host,':',host.port,'/_bulk'].join('');
+             removeQueryString(host.host),':',host.port,'/_bulk',extractQueryString(host.host)].join('');
   var options = getDefaultOptions(host.username,host.password);
   options.method = 'POST';
   options['payload'] = data;
