@@ -10,7 +10,7 @@
 function onOpen(e) {
   SpreadsheetApp.getUi()
     .createAddonMenu()
-    .addItem('Send To Cluster...', 'showPushDataSidebar')
+    .addItem('Send To Elasticsearch Cluster...', 'showPushDataSidebar')
     .addToUi();
 }
 
@@ -434,28 +434,21 @@ var default_template = {
       "dynamic_templates": [
         {
           "string_fields": {
-            "mapping": {
-              "fields": {
-                "{name}": {
-                  "index": "analyzed",
-                  "omit_norms": true,
-                  "type": "string"
-                },
-                "raw": {
-                  "search_analyzer": "keyword",
-                  "ignore_above": 256,
-                  "index": "not_analyzed",
-                  "type": "string"
-                }
-              },
-              "type": "multi_field"
-            },
             "match_mapping_type": "string",
-            "match": "*"
+            "mapping": {
+              "type": "text"
+              "norms": false,
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                },
+              }
+              }
+            }
           }
         }
-      ],
-      "_all": { "enabled": true }
+      ]
     }
   },
   "aliases": {}

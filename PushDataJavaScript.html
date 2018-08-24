@@ -19,7 +19,8 @@
         function(msg) {
           getSheetName();
           getDefaultRange();
-          $('#sidebar-type').val('spreadsheet');
+          $('#sidebar-type').val('_doc');
+          $('#sidebar-pipeline').val('');
           $('#sidebar-template').val('google_spreadsheet');
           if(msg.was_checked === "0") {
             checkHost(msg);
